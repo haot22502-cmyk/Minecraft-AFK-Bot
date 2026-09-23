@@ -1,117 +1,129 @@
-<!-- Last updated: 2025-08-21T17:25:27Z -->
-# 🤖 Minecraft AFK Bot (Mineflayer-Based)
+mkdir minecraft-bot && cd minecraft-bot && npm init -y && npm install mineflayer && cat > bot.js <<'EOF'
+const mineflayer = require("mineflayer");
 
-This is a lightweight Minecraft Java AFK Bot powered by [Mineflayer](https://github.com/PrismarineJS/mineflayer). It connects to a Java server, performs basic movements to avoid AFK detection, and can be customized via a simple configuration file.
+// ===============================
+// 🔧 CẤU HÌNH
+// ===============================
+const CONFIG = {
+  host: "1212-cCnV.aternos.me",   // VD: play.example.com
+  port: 23720,         // Port server
+  username: "Aquanbellbot",
+  auth: "offline",
+  version: false
+};
 
-<p>
-  <a href="https://discord.gg/SjQydGvs5p" target="_blank">
-    <img src="https://img.shields.io/badge/Discord-Join-7289DA?logo=discord&logoColor=white" alt="Discord" width="300" />
-  </a>
-</p>
+let bot;
+let reconnectTimer = null;
+let afkTimer = null;
 
-<p>
-  <a href="https://buy.polar.sh/polar_cl_yODs3Ofw3OH6yaZYZYBgRSSZKYneEpLjkBm702IGyN2" target="_blank">
-    <img src="https://img.shields.io/badge/💖_Support_&_Contribute-8B5CF6?logoColor=white" alt="Contribute on Polar" width="300" />
-  </a>
-</p>
+// ===============================
+// 🤖 TẠO BOT
+// ===============================
+function createBot() {
+  console.log("🔄 Đang kết nối server...");
 
-# ⭐ Star this project, fork and use!
+  bot = mineflayer.createBot(CONFIG);
 
-## ⚠️ Warning Before You Begin
+  // Bot vào server
+  bot.once("spawn", () => {
+    console.log("================================");
+    console.log("✅ BOT ĐÃ VÀO SERVER");
+    console.log("🤖 Tên: " + CONFIG.username);
+    console.log("🌐 Server: " + CONFIG.host + ":" + CONFIG.port);
+    console.log("================================");
 
-- Before starting the bot, please make sure that the Offline Mode (Pirated/Not Original) option in the settings section of your Aternos server is active.
+    // Chống AFK
+    afkTimer = setInterval(() => {
+      if (!bot || !bot.entity) return;
 
-- Secure the bot to protect it from monsters in the game.
+      bot.setControlState("jump", true);
 
----
+      setTimeout(() => {
+        if (bot) {
+          bot.setControlState("jump", false);
+        }
+      }, 300);
 
-## ✨ Features
+    }, 60000);
+  });
 
-* Connect to Minecraft Java servers (IP + port)
-* Customize bot username
-* Control chunk loading and memory usage
-* Periodic chunk pruning to reduce resource usage
-* Auto-movement behavior: step forward/backward, jump, sneak, loop
-* Easy configuration via `config.json`
+  // ===============================
+  // 💬 LỆNH CHAT
+  // ===============================
+  bot.on("chat", (username, message) => {
+    if (username === bot.username) return;
 
----
+    console.log(`[CHAT] ${username}: ${message}`);
 
-## ⚡ Installation
+    // !ping
+    if (message === "!ping") {
+      bot.chat("Pong!");
+    }
 
-### 1. Clone the repository
+    // !info
+    if (message === "!info") {
+      bot.chat("Bot đang online AFK.");
+    }
 
-```bash
-git clone https://github.com/nuekkis/Minecraft-AFK-Bot.git
-cd Minecraft-AFK-Bot
-```
+    // !pos
+    if (message === "!pos") {
+      const p = bot.entity.position;
 
-### 2. Install dependencies
+      bot.chat(
+        `XYZ: ${Math.floor(p.x)} ${Math.floor(p.y)} ${Math.floor(p.z)}`
+      );
+    }
 
-```bash
-npm install
-```
+    // !say
+    if (message === "!say") {
+      bot.chat("Bot vẫn đang hoạt động!");
+    }
 
-### 3. Configure `config.json`
+    // !help
+    if (message === "!help") {
+      bot.chat("Lenh: !ping !info !pos !say !help");
+    }
+  });
 
-```json
-{
-  "serverHost": "yourserver.aternos.me",
-  "serverPort": 25565,
-  "botUsername": "MyBotName",
-  "botChunk": 4
+  // ===============================
+  // ❌ BỊ KICK
+  // ===============================
+  bot.on("kicked", reason => {
+    console.log("❌ Bot bị kick:", reason);
+  });
+
+  // ===============================
+  // ⚠️ LỖI
+  // ===============================
+  bot.on("error", error => {
+    console.log("⚠️ Lỗi:", error.message);
+  });
+
+  // ===============================
+  // 🔄 TỰ KẾT NỐI LẠI
+  // ===============================
+  bot.on("end", () => {
+    console.log("🔴 Bot mất kết nối!");
+
+    if (afkTimer) {
+      clearInterval(afkTimer);
+      afkTimer = null;
+    }
+
+    if (reconnectTimer) return;
+
+    console.log("⏳ Kết nối lại sau 10 giây...");
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      createBot();
+    }, 10000);
+  });
 }
-```
 
-> ⚠️ Make sure the server is in offline mode if you're not using premium accounts.
-
----
-
-## 🤖 Starting the Bot
-
-```bash
+// ===============================
+// 🚀 CHẠY BOT
+// ===============================
+createBot();
+EOF
 node bot.js
-```
-
-On successful connection:
-
-* You'll see `✅ BotName is Ready!` in the console
-* After 5 seconds, all loaded chunks are cleared
-* Every 20 seconds, any chunks beyond a 6-chunk radius will be removed
-
----
-
-## ⚙️ Configuration Options (`config.json`)
-
-| Key            | Description                                |
-| -------------- | ------------------------------------------ |
-| `serverHost`         | IP or domain of your Minecraft server      |
-| `serverPort`         | Server port (default is 25565)             |
-| `botUsername`     | The bot's visible name in-game             |
-| `botChunk` | Radius of loaded chunks (recommended: 1–6) |
-
----
-
-## ⚠️ Notes
-
-* **Skins**: Skins might not appear properly if the server is in offline mode.
-* **Sneak Movement**: The bot uses `setControlState('sneak', true)`, but some servers may block or ignore this action.
-* **AFK Prevention**: The bot periodically moves, sneaks, and jumps to prevent disconnection due to inactivity.
-
----
-
-## 📚 Resources & Contributions
-
-* [Mineflayer Docs](https://mineflayer.prismarine.js.org/)
-* [PrismarineJS GitHub](https://github.com/PrismarineJS/)
-
-Feel free to contribute by opening a pull request or submitting an issue.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-Get started now and keep your server active with a smart, customizable bot! ⛏️
